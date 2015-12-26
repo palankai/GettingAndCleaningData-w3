@@ -29,7 +29,7 @@ load.measures <- function(files, features, activityLabels, selectedFeatures) {
         file.path(config$folder, files$activities),
         header = FALSE,
         col.names = c('activity_id')
-    ), activityLabels, by.x = "activity_id", by.y = "id")$activity
+    ), activityLabels, by.x = "activity_id", by.y = "id")['activity']
 
     # Load measuers with proper headers
     measures <- read.table(
@@ -73,10 +73,20 @@ load.dataset <- function(...) {
     )
 }
 
+write.result <- function(dataset, filename, ...) {
+    write.table(
+        dataset,
+        filename,
+        row.names = FALSE,
+        ...
+    )
+}
+
 main <- function() {
     activityLabels <- load.activities()
     features <- load.features()
     selectedFeatures <- grep("^t(.*?)(std\\(\\)|mean\\(\\))", features, value = TRUE)
+    col.names = c('subject', 'activity', selectedFeatures)
 
     dataset <- load.dataset(
         features = features,
@@ -84,10 +94,24 @@ main <- function() {
         selectedFeatures = selectedFeatures
     )
     
-    write.table(
+    write.result(
         dataset,
         "result_1.txt",
-        row.names = FALSE,
-        col.names = c('subject', 'activity', selectedFeatures)
+        col.names = col.names
+    )
+
+    datasetMelt <- melt(
+        dataset,
+        id.vars=c('subject', 'activity'),
+        measure.vars=make.names(selectedFeatures)
+    )
+    datasetCast <- dcast(datasetMelt, subject + activity ~ variable, mean)
+
+    write.result(
+        datasetCast,
+        "result_2.txt",
+        col.names = col.names
     )
 }
+
+main()
