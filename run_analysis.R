@@ -16,12 +16,12 @@ config <- list(
     )
 )
 
-load.measures <- function(files, features, activity_labels) {
-    # Load measuers with proper headers
-    measures <- read.table(
-        file.path(config$folder, files$measures),
+load.measures <- function(files, features, activityLabels, selectedFeatures) {
+    # Load subjects
+    subjects <- read.table(
+        file.path(config$folder, files$subjects),
         header = FALSE,
-        col.names = features
+        col.names = c('subject')
     )
     
     # Load activity names (merged with labels), returns labels
@@ -29,15 +29,16 @@ load.measures <- function(files, features, activity_labels) {
         file.path(config$folder, files$activities),
         header = FALSE,
         col.names = c('activity_id')
-    ), activity_labels, by.x = "activity_id", by.y = "id")[,c('activity')]
-    
-    # Load subjects
-    subjects <- read.table(
-        file.path(config$folder, files$subjects),
+    ), activityLabels, by.x = "activity_id", by.y = "id")$activity
+
+    # Load measuers with proper headers
+    measures <- read.table(
+        file.path(config$folder, files$measures),
         header = FALSE,
-        col.names = c('subject')
+        col.names = features
     )
-    cbind(subjects, activities, measures)
+
+    cbind(subjects, activities, measures[,make.names(selectedFeatures)])
 }
 
 load.features <- function() {
@@ -59,24 +60,34 @@ load.activities <- function() {
     activities
 }
 
-load.dataset <- function() {
-    features <- load.features()
-    activities <- load.activities()
+load.dataset <- function(...) {
     rbind(
         load.measures(
             config$train,
-            features = features,
-            activity_labels = activities
+            ...
         ),
         load.measures(
             config$test,
-            features = features,
-            activity_labels = activities
+            ...
         )
     )
 }
 
 main <- function() {
-    load.dataset()
+    activityLabels <- load.activities()
+    features <- load.features()
+    selectedFeatures <- grep("^t(.*?)(std\\(\\)|mean\\(\\))", features, value = TRUE)
+
+    dataset <- load.dataset(
+        features = features,
+        activityLabels = activityLabels,
+        selectedFeatures = selectedFeatures
+    )
+    
+    write.table(
+        dataset,
+        "result_1.txt",
+        row.names = FALSE,
+        col.names = c('subject', 'activity', selectedFeatures)
+    )
 }
-res <- main()
